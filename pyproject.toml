@@ -1,0 +1,16 @@
+[project]
+name = "python-ai-work"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.3",
+    "flask-sqlalchemy>=3.1.1",
+    "matplotlib>=3.10.9",
+    "numpy>=2.4.6",
+    "passlib[argon2]>=1.7.4",
+    "pyjwt>=2.12.1",
+    "torch>=2.12.0",
+    "torchvision>=0.27.0",
+]
