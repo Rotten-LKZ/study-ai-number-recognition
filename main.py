@@ -15,6 +15,7 @@ import os
 class Base(DeclarativeBase):
     pass
 
+# 用户表，存储注册用户的用户名和密码（Argon2）
 class User(Base):
     __tablename__ = 'users'
 
@@ -22,6 +23,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
 
+# 识别历史表，记录用户每次上传的图片和识别结果
 class RecognitionHistory(Base):
     __tablename__ = 'recognition_history'
 
@@ -44,13 +46,13 @@ model.eval()
 # 数据库初始化
 os.makedirs('data/db', exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data/db/app.db')}'
-app.config['SECRET_KEY'] = 'your_secret'
+app.config['SECRET_KEY'] = 'MNIST_Rec0gniti0n_Secret_Key_F0r_Dev_Only_Very_Long'
 # 创建数据库表
 db.init_app(app)
 with app.app_context():
     db.create_all()
 
-# 检验请求 JSON 是否包含必要的字段
+# 检验请求 JSON 是否包含必要的字段的装饰器
 def validate_json(keys):
     def decorator(f):
         @wraps(f)
@@ -65,6 +67,7 @@ def validate_json(keys):
         return wrapper
     return decorator
 
+# 验证用户登录状态的装饰器
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -81,6 +84,22 @@ def token_required(f):
         return f(*args, **kwargs, user_id=current_user_id)
     return decorated
 
+@app.route('/', methods=['GET'])
+def index():
+    return send_file('frontend/index.html')
+
+# 服务静态文件 服务frontend下 默认尝试 html 后缀
+@app.route('/<path:path>', methods=['GET'])
+def serve_static(path):
+    file_path = os.path.join('frontend', path)
+    if os.path.exists(file_path):
+        return send_file(file_path)
+    html_path = os.path.join('frontend', f'{path}.html')
+    if os.path.exists(html_path):
+        return send_file(html_path)
+    return {"message": "Not found"}, 404
+
+# API 蓝图
 api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/register', methods=['POST'])
@@ -102,7 +121,6 @@ def register():
 @validate_json(['username', 'password'])
 def login():
     data = request.get_json()
-    print(data.get('username'))
     user = db.session.execute(select(User).where(User.username == data.get('username')).limit(1)).scalar_one_or_none()
     if user and pwd_context.verify(data.get('password'), user.password):
         token = jwt.encode({
@@ -115,6 +133,20 @@ def login():
         return resp
         
     return {"message": "Invalid credentials"}, 401
+
+@api_bp.route('/me', methods=['GET'])
+@token_required
+def me(user_id):
+    user = db.session.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    if not user:
+        return {"message": "Unauthorized"}, 401
+    return {"username": user.username}
+
+@api_bp.route('/logout', methods=['POST'])
+def logout():
+    resp = make_response({"message": "Logout successful"})
+    resp.delete_cookie('token')
+    return resp
 
 @api_bp.route('/recognize', methods=['POST'])
 @validate_json(['image']) # in BASE64
