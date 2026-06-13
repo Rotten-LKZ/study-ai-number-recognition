@@ -71,3 +71,10 @@ CNN(
 
 - `SECRET_KEY` 当前为开发环境硬编码，生产环境请替换为安全随机密钥
 - 模型文件 `data/models/mnist_cnn.pth` 必须预先训练生成，否则服务启动会报错
+
+## 版权声明
+
+/frontend/resource 下使用了几个外部项目：
+[Bootstrap](https://github.com/twbs/bootstrap)
+[qrcode.js](https://github.com/davidshimjs/qrcodejs)
+[sweetalert2](https://github.com/sweetalert2/sweetalert2)
