@@ -142,6 +142,46 @@ def me(user_id):
         return {"message": "Unauthorized"}, 401
     return {"username": user.username}
 
+# 手机端登录接口，生成一个短期有效的临时 token，前端可以使用这个 token 在手机端登录，获取正式 token
+@api_bp.route('/login_on_phone', methods=['POST'])
+@token_required
+def login_on_phone(user_id):
+    user = db.session.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    if not user:
+        return {"message": "Unauthorized"}, 401
+    token = jwt.encode({
+        'user_id': user.id,
+        'temporary': True,
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2)
+    }, app.config['SECRET_KEY'], algorithm='HS256')
+    return {"token": token}
+
+@api_bp.route('/login_by_temporary_token', methods=['GET'])
+def login_by_temporary_token():
+    token = request.args.get('token')
+    if not token:
+        return {"message": "Token is required"}, 400
+    try:
+        decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        if not decoded.get('temporary'):
+            return {"message": "Invalid token"}, 400
+        user_id = decoded['user_id']
+    except jwt.ExpiredSignatureError:
+        return {"message": "Token expired"}, 401
+    except jwt.InvalidTokenError:
+        return {"message": "Invalid token"}, 401
+
+    new_token = jwt.encode({
+        'user_id': user_id,
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=10)
+    }, app.config['SECRET_KEY'], algorithm='HS256')
+
+    resp = make_response({"message": "Login successful"})
+    resp.set_cookie('token', new_token, httponly=True, samesite='Lax')
+    resp.headers['Location'] = '/'
+    resp.status_code = 302
+    return resp
+
 @api_bp.route('/logout', methods=['POST'])
 def logout():
     resp = make_response({"message": "Logout successful"})
@@ -184,4 +224,4 @@ def get_image(filename, user_id):
 app.register_blueprint(api_bp, url_prefix='/api')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
