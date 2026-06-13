@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -43,6 +45,8 @@ def train():
     LR = 0.001
 
     print(f"Using device: {DEVICE}")
+    if DEVICE.type == "cuda":
+        print(f"GPU Name: {torch.cuda.get_device_name(0)}")
 
     # ---------------------- 数据加载 ----------------------
     transform = transforms.Compose([
@@ -86,8 +90,9 @@ def train():
         print(f"Epoch [{epoch+1}/{EPOCHS}] Average Loss: {avg_loss:.4f}")
 
     # ---------------------- 保存模型 ----------------------
-    torch.save(model.state_dict(), "mnist_cnn.pth")
-    print("Model saved to mnist_cnn.pth")
+    os.makedirs("data/models", exist_ok=True)
+    torch.save(model.state_dict(), "data/models/mnist_cnn.pth")
+    print("Model saved to data/models/mnist_cnn.pth")
 
     # ---------------------- 可视化损失曲线 ----------------------
     plt.figure(figsize=(8, 5))
@@ -96,6 +101,7 @@ def train():
     plt.ylabel("Loss")
     plt.title("Training Loss Curve")
     plt.grid(True)
+    os.makedirs("data", exist_ok=True)
     plt.savefig("data/loss_curve.png", dpi=150)
     print("Loss curve saved to data/loss_curve.png")
 

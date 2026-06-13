@@ -75,6 +75,6 @@ CNN(
 ## 版权声明
 
 /frontend/resource 下使用了几个外部项目：
-[Bootstrap](https://github.com/twbs/bootstrap)
-[qrcode.js](https://github.com/davidshimjs/qrcodejs)
-[sweetalert2](https://github.com/sweetalert2/sweetalert2)
+- [Bootstrap](https://github.com/twbs/bootstrap) under MIT
+- [qrcode.js](https://github.com/davidshimjs/qrcodejs) under MIT
+- [sweetalert2](https://github.com/sweetalert2/sweetalert2) under MIT

@@ -224,4 +224,9 @@ def get_image(filename, user_id):
 app.register_blueprint(api_bp, url_prefix='/api')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    is_docker = os.environ.get("DOCKER_ENV") == "1"
+    if is_docker:
+        print("Running in docker environment")
+        app.run(host='0.0.0.0', debug=True)
+    else:
+        app.run(host='0.0.0.0', debug=False)
