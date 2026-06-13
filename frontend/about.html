@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>手写数字识别 - 关于</title>
+    <link href="./resource/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <style>
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        canvas {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: crosshair;
+            width: 100%;
+            height: auto;
+            background: #fff;
+            touch-action: none;
+        }
+        .result-bar {
+            height: 24px;
+            border-radius: 4px;
+            background: #0d6efd;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            min-width: 40px;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">手写数字识别</a>
+            <div class="navbar-nav ms-auto align-items-center">
+                <a class="nav-link" href="/">去识别</a>
+                <a class="nav-link" href="/auth/me">历史记录</a>
+            </div>
+        </div>
+    </nav>
+    <style>
+        #userMenu:hover #logoutMenu { display: block !important; }
+    </style>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2>项目背景</h2>
+                        <p>由于该课程是基本的机器学习入门课程，并且着重于 Python 开发，所以选择了简单的手写数字识别作为练习项目，理解项目实际开发的流程并实际跑通。这是一个基于深度学习的手写数字识别系统，旨在提供一个简单易用的界面，让用户能够上传手写数字图片并获得识别结果。该项目使用了卷积神经网络模型进行训练，能够准确识别0-9的手写数字。</p>
+                        <h2>使用步骤</h2>
+                        <ol>
+                            <li><code>uv sync</code> 安装依赖</li>
+                            <li><code>uv run train_mnist.py</code> 首次运行训练模型</li>
+                            <li><code>uv run main.py</code> 启动应用</li>
+                            <li>注册账号之后根据注册的账号密码登录</li>
+                            <li>访问首页，点击“选择图片”按钮上传一张包含手写数字的图片。</li>
+                            <li>点击“识别”按钮，系统将处理图片并显示识别结果。</li>
+                            <li>在结果页面，您可以查看识别的数字及其对应的置信度。</li>
+                            <li>如果需要重新识别，可以点击“重新识别”按钮返回首页。</li>
+                        </ol>
+                        <h2>开发环境</h2>
+                        <p>前端使用原生 HTML、CSS 和 JavaScript 开发，后端使用 Python 和 Flask 框架。使用 VSCode 进行开发，并采用 Claude Code 作为辅助工具。</p>
+                        <h2>依赖清单</h2>
+                        <ul>
+                            <li>Flask - Web 框架</li>
+                            <li>SQLAlchemy - 数据库 ORM</li>
+                            <li>PyTorch - 深度学习框架</li>
+                            <li>Bootstrap - 前端 UI 框架</li>
+                            <li>SweetAlert2 - 弹窗库</li>
+                            <li>QRCode.js - 生成二维码</li>
+                        </ul>
+                        <h2>模型数据来源</h2>
+                        <p>MNIST 手写数字数据集</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./resource/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>
