@@ -161,7 +161,7 @@ def recognize(user_id):
         topk = torch.topk(probs, 3, dim=1)
 
     results = [(int(idx.item()), float(val.item())) for val, idx in zip(topk.values[0], topk.indices[0])]
-    history_item = RecognitionHistory(user_id=user_id, image_filename=os.path.basename(image_path), results=str(results), created_at=datetime.datetime.now())
+    history_item = RecognitionHistory(user_id=user_id, image_filename=os.path.basename(image_path), results=str(results), created_at=datetime.datetime.now(datetime.timezone.utc))
     db.session.add(history_item)
     db.session.commit()
     return {"message": "Recognition successful", "result": results}
