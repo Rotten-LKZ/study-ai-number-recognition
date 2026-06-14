@@ -1,4 +1,4 @@
-from PIL import Image, ImageOps, ImageStat
+from PIL import Image, ImageOps, ImageStat, ImageFilter
 import os
 import io
 import uuid
@@ -11,10 +11,26 @@ def load_and_save_image_from_base64(base64_str: str) -> tuple[Image.Image, str]:
     if ',' in base64_str:
         base64_str = base64_str.split(',')[1]
     img_data = base64.b64decode(base64_str)
-    img = Image.open(io.BytesIO(img_data)).convert("L").resize((28, 28))
+    img = Image.open(io.BytesIO(img_data)).convert("L")
     # 自适应反转：MNIST 是黑底白字，如果上传的是白底黑字则反转极性
     if ImageStat.Stat(img).mean[0] > 127:
         img = ImageOps.invert(img)
+    
+    bbox = img.getbbox()
+    if bbox:
+        img = img.crop(bbox)
+        img = img.filter(ImageFilter.MaxFilter(3))
+        max_size = max(img.width, img.height)
+        square_img = Image.new("L", (max_size, max_size), 0)
+        square_img.paste(img, ((max_size - img.width) // 2, (max_size - img.height) // 2))
+        img = square_img
+        padding = int(max_size * 0.1)
+        if padding > 0:
+            padding_size = (max_size + padding * 2, max_size + padding * 2)
+            padded_img = Image.new("L", padding_size, 0)
+            padded_img.paste(img, (padding, padding))
+            img = padded_img
+    img = img.resize((28, 28), Image.Resampling.LANCZOS)
     filename = f"{uuid.uuid4().hex}.png"
     img.save(os.path.join(SAVE_PATH, filename))
     return img, filename
