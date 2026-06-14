@@ -79,6 +79,8 @@ services:
 | POST | /api/recognize | 上传 Base64 图片进行识别 | 是 |
 | GET | /api/recognition_history | 获取识别历史记录 | 是 |
 | GET | /api/images/<filename> | 获取历史图片 | 是 |
+| GET | /api/generate_question | 获取十道四则运算题目 | 是 |
+| POST | /api/submit_answer | 校验运算题目的答案 | 是 |
 
 ---
 
