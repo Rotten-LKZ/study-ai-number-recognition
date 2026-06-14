@@ -6,11 +6,15 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from functools import wraps
 from train_mnist import CNN, DEVICE
 from torchvision import transforms
-from utils import load_and_save_image_from_base64, get_image_path
+from utils import load_and_save_image_from_base64, get_image_path, generate_question as generate_question_util
 import torch
 import jwt
 import datetime
 import os
+import hashlib
+
+SECRET_KEY = 'MNIST_Rec0gniti0n_Secret_Key_F0r_Dev_Only_Very_Long'
+ANSWER_HASH_SALT = 'Question_Answer_Salt_For_Hashing'
 
 class Base(DeclarativeBase):
     pass
@@ -46,7 +50,7 @@ model.eval()
 # 数据库初始化
 os.makedirs('data/db', exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data/db/app.db')}'
-app.config['SECRET_KEY'] = 'MNIST_Rec0gniti0n_Secret_Key_F0r_Dev_Only_Very_Long'
+app.config['SECRET_KEY'] = SECRET_KEY
 # 创建数据库表
 db.init_app(app)
 with app.app_context():
@@ -221,12 +225,35 @@ def get_image(filename, user_id):
         return {"message": "Image not found"}, 404
     return send_file(image_path, mimetype='image/png')
 
+# 四则运算小游戏
+@api_bp.route('/generate_question', methods=['GET'])
+@token_required
+def generate_question(user_id):
+    questions = []
+    answers = []
+    for _ in range(10):
+        question, answer = generate_question_util()
+        questions.append(question)
+        answers.append(hashlib.sha256((str(answer) + ANSWER_HASH_SALT).encode()).hexdigest())
+
+    return {"questions": questions, "answers": answers}
+
+@api_bp.route('/submit_answer', methods=['POST'])
+@validate_json(['user_answer', 'answer'])
+@token_required
+def submit_answer(user_id):
+    data = request.get_json()
+    user_answer: int = data['user_answer']
+    answer: str = data['answer']
+    return {"correct": hashlib.sha256((str(user_answer) + ANSWER_HASH_SALT).encode()).hexdigest() == answer}
+    
+
 app.register_blueprint(api_bp, url_prefix='/api')
 
 if __name__ == '__main__':
     is_docker = os.environ.get("DOCKER_ENV") == "1"
     if is_docker:
         print("Running in docker environment")
-        app.run(host='0.0.0.0', debug=True)
-    else:
         app.run(host='0.0.0.0', debug=False)
+    else:
+        app.run(host='0.0.0.0', debug=True)

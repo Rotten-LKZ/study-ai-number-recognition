@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>手写数字识别 - 速算小游戏</title>
+    <link href="./resource/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <style>
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        canvas {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: crosshair;
+            width: 100%;
+            height: auto;
+            background: #fff;
+            touch-action: none;
+        }
+        .result-bar {
+            height: 24px;
+            border-radius: 4px;
+            background: #0d6efd;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            min-width: 40px;
+            transition: width 0.3s ease;
+        }
+        #qrcode {
+            padding: 0 4px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">手写数字识别</a>
+            <div class="navbar-nav ms-auto align-items-center">
+                <a class="nav-link" href="/">主页</a>
+                <a class="nav-link" href="/about">关于</a>
+                <a class="nav-link" href="/auth/me">历史记录</a>
+                <a class="nav-link" href="/auth/login" id="loginLink">登录 / 注册</a>
+                <div class="nav-item position-relative" id="userMenu" style="display:none;">
+                    <a class="nav-link" href="#" id="userNameLink">用户</a>
+                    <div class="position-absolute end-0 bg-white border rounded shadow-sm py-1" style="top:100%; display:none; min-width: 100px; z-index: 1000;" id="logoutMenu">
+                        <div id="qrcode"></div>
+                        <a class="dropdown-item px-3 py-1 text-decoration-none text-dark" href="#" id="logoutBtn">登出</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <style>
+        #userMenu:hover #logoutMenu { display: block !important; }
+    </style>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">速算小游戏</h2>
+                        <p class="text-center" id="hintText">点击「开始」按钮，在画布上写数字作为答案，之后按提交按钮</p>
+
+                        <div id="gameInfo" class="d-flex justify-content-center align-items-center gap-4 mb-3 d-none">
+                            <div class="text-center">
+                                <div class="text-muted small">题目</div>
+                                <div class="fw-bold"><span id="curIdx">0</span> / 10</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small">得分</div>
+                                <div class="fw-bold text-success"><span id="scoreVal">0</span></div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small">用时</div>
+                                <div class="fw-bold"><span id="timerVal">00:00</span></div>
+                            </div>
+                        </div>
+
+                        <div id="questionBox" class="text-center mb-3 d-none">
+                            <div class="text-muted small mb-1">请计算并写出答案</div>
+                            <div class="display-5 fw-bold" id="questionText">—</div>
+                        </div>
+
+                        <div class="canvas-container mb-3">
+                            <canvas id="drawCanvas" width="400" height="400"></canvas>
+                        </div>
+                        <div class="d-flex justify-content-center gap-2 mb-4">
+                            <button id="clearBtn" class="btn btn-outline-secondary d-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eraser me-1" viewBox="0 0 16 16">
+                                    <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828zm.66 11.34L3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293z"/>
+                                </svg>
+                                清除
+                            </button>
+                            <button id="recognizeBtn" class="btn btn-primary d-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic me-1" viewBox="0 0 16 16">
+                                    <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm-2.5.5a.5.5 0 0 0-1 0V1.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V2.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V3.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V4.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V5.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V6.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V7.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V8.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V9.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V10.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V11.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V12.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V13.5a.5.5 0 0 0 1 0z"/>
+                                    <path d="M13.879 3.879a1.5 1.5 0 0 1 2.122 2.122l-7.5 7.5a1.5 1.5 0 0 1-2.122 0l-3.5-3.5a1.5 1.5 0 0 1 2.122-2.122l2.439 2.44 6.439-6.44z"/>
+                                </svg>
+                                提交
+                            </button>
+                            <button id="startBtn" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic me-1" viewBox="0 0 16 16">
+                                    <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm-2.5.5a.5.5 0 0 0-1 0V1.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V2.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V3.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V4.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V5.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V6.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V7.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V8.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V9.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V10.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V11.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V12.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V13.5a.5.5 0 0 0 1 0z"/>
+                                    <path d="M13.879 3.879a1.5 1.5 0 0 1 2.122 2.122l-7.5 7.5a1.5 1.5 0 0 1-2.122 0l-3.5-3.5a1.5 1.5 0 0 1 2.122-2.122l2.439 2.44 6.439-6.44z"/>
+                                </svg>
+                                开始
+                            </button>
+                        </div>
+
+                        <div id="answerFeedback" class="text-center mt-3 d-none">
+                            <div class="alert d-inline-block" id="feedbackBox" role="alert"></div>
+                        </div>
+
+                        <div id="finalArea" class="d-none">
+                            <hr>
+                            <h4 class="text-center mb-3">游戏结束</h4>
+                            <div class="row text-center mb-3">
+                                <div class="col">
+                                    <div class="text-muted small">得分</div>
+                                    <div class="display-6 fw-bold text-success" id="finalScore">0 / 10</div>
+                                </div>
+                                <div class="col">
+                                    <div class="text-muted small">总用时</div>
+                                    <div class="display-6 fw-bold" id="finalTime">00:00</div>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <button id="restartBtn" class="btn btn-primary">再玩一次</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./resource/qrcode.min.js"></script>
+    <script src="./resource/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script src="./resource/sweetalert2@11.js"></script>
+    <script>
+        setInterval((function wrapper() {
+            fetch('/api/login_on_phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+                .then(resp => resp.json())
+                .then(data => {
+                    document.getElementById('qrcode').innerHTML = ''
+                    const url = new URL('/api/login_by_temporary_token', location.origin);
+                    url.searchParams.set('token', data.token);
+                    new QRCode(document.getElementById('qrcode'), {
+                        text: url.href,
+                        width: 128,
+                        height: 128,
+                        colorDark : '#000000',
+                        colorLight : '#ffffff',
+                        correctLevel : QRCode.CorrectLevel.M
+                    });
+                });
+            return wrapper;
+        })(), 100 * 1000)
+
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // 初始化画布
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 15;
+        ctx.strokeStyle = '#000000';
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('answerFeedback').classList.add('d-none');
+        });
+
+        async function checkAuth() {
+            try {
+                const resp = await fetch('/api/me');
+                if (resp.status === 401) {
+                    window.location.href = '/auth/login';
+                    return;
+                }
+                if (!resp.ok) throw new Error();
+                const data = await resp.json();
+                document.getElementById('loginLink').style.display = 'none';
+                document.getElementById('userMenu').style.display = 'block';
+                document.getElementById('userNameLink').textContent = data.username;
+            } catch (e) {
+                window.location.href = '/auth/login';
+            }
+        }
+        checkAuth();
+
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/auth/login';
+        });
+
+        // ===== 速算小游戏状态 =====
+        const gameState = {
+            active: false,
+            questions: [],
+            answers: [],
+            idx: 0,
+            score: 0,
+            startTime: 0,
+            timerId: null,
+        };
+
+        const $ = (id) => document.getElementById(id);
+        const startBtn = $('startBtn');
+        const recognizeBtn = $('recognizeBtn');
+        const clearBtn = $('clearBtn');
+
+        function fmtTime(ms) {
+            const total = Math.floor(ms / 1000);
+            const m = String(Math.floor(total / 60)).padStart(2, '0');
+            const s = String(total % 60).padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function updateTimer() {
+            $('timerVal').textContent = fmtTime(Date.now() - gameState.startTime);
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function showQuestion() {
+            clearCanvas();
+            $('questionText').textContent = `${gameState.questions[gameState.idx]} = ?`;
+            $('curIdx').textContent = String(gameState.idx + 1);
+            $('scoreVal').textContent = String(gameState.score);
+            $('answerFeedback').classList.add('d-none');
+            recognizeBtn.disabled = false;
+            recognizeBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic me-1" viewBox="0 0 16 16">
+                    <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm-2.5.5a.5.5 0 0 0-1 0V1.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V2.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V3.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V4.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V5.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V6.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V7.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V8.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V9.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V10.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V11.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V12.5a.5.5 0 0 0 1 0zm-2 .5a.5.5 0 0 0-1 0V13.5a.5.5 0 0 0 1 0z"/>
+                    <path d="M13.879 3.879a1.5 1.5 0 0 1 2.122 2.122l-7.5 7.5a1.5 1.5 0 0 1-2.122 0l-3.5-3.5a1.5 1.5 0 0 1 2.122-2.122l2.439 2.44 6.439-6.44z"/>
+                </svg>
+                提交`;
+        }
+
+        function endGame() {
+            gameState.active = false;
+            if (gameState.timerId) clearInterval(gameState.timerId);
+            const elapsed = Date.now() - gameState.startTime;
+            $('finalScore').textContent = `${gameState.score} / 10`;
+            $('finalTime').textContent = fmtTime(elapsed);
+            $('questionBox').classList.add('d-none');
+            $('answerFeedback').classList.add('d-none');
+            $('finalArea').classList.remove('d-none');
+            startBtn.classList.remove('d-none');
+            recognizeBtn.classList.add('d-none');
+            clearBtn.classList.add('d-none');
+            $('hintText').textContent = '点击「开始」按钮，在画布上写数字作为答案，之后按提交按钮';
+        }
+
+        async function startGame() {
+            startBtn.disabled = true;
+            const orig = startBtn.innerHTML;
+            startBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>加载中...';
+            try {
+                const resp = await fetch('/api/generate_question');
+                if (resp.status === 401) {
+                    window.location.href = '/auth/login';
+                    return;
+                }
+                if (!resp.ok) throw new Error();
+                const data = await resp.json();
+                if (!data.questions || !data.answers || data.questions.length !== data.answers.length) {
+                    throw new Error();
+                }
+                gameState.questions = data.questions;
+                gameState.answers = data.answers;
+                gameState.idx = 0;
+                gameState.score = 0;
+                gameState.startTime = Date.now();
+                gameState.active = true;
+                gameState.timerId = setInterval(updateTimer, 250);
+                updateTimer();
+
+                $('hintText').textContent = '在画布上写出每道题的答案，然后点击「提交」';
+                $('gameInfo').classList.remove('d-none');
+                $('questionBox').classList.remove('d-none');
+                $('finalArea').classList.add('d-none');
+                startBtn.classList.add('d-none');
+                recognizeBtn.classList.remove('d-none');
+                clearBtn.classList.remove('d-none');
+                clearCanvas();
+                showQuestion();
+            } catch (e) {
+                Swal.fire({ title: '错误', text: '无法生成新问题，请稍后再试', icon: 'error', confirmButtonText: '确定' });
+            } finally {
+                startBtn.disabled = false;
+                startBtn.innerHTML = orig;
+            }
+        }
+
+        async function judgeAnswer(userDigit, answerHash) {
+            const resp = await fetch('/api/submit_answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_answer: userDigit, answer: answerHash })
+            });
+            if (resp.status === 401) {
+                window.location.href = '/auth/login';
+                return false;
+            }
+            if (!resp.ok) throw new Error('判分失败');
+            const data = await resp.json();
+            return !!data.correct;
+        }
+
+        function showFeedback(correct, recognized) {
+            const box = $('feedbackBox');
+            const correctAnswer = recognized === null
+                ? '未识别到数字'
+                : (correct ? '✓ 正确' : '✗ 错误');
+            box.className = `alert ${correct ? 'alert-success' : 'alert-danger'} mb-0`;
+            box.textContent = `识别为「${recognized === null ? '—' : recognized}」，${correctAnswer}`;
+            $('answerFeedback').classList.remove('d-none');
+        }
+
+        // 游戏进行中复用 recognizeBtn 的点击逻辑，下方覆盖原 handler
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+
+        recognizeBtn.addEventListener('click', async () => {
+            if (!gameState.active) return;
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            let hasContent = false;
+            for (let i = 0; i < pixels.length; i += 4) {
+                if (pixels[i] < 255 || pixels[i+1] < 255 || pixels[i+2] < 255) {
+                    hasContent = true;
+                    break;
+                }
+            }
+            if (!hasContent) {
+                Swal.fire({ title: '提示', text: '请先写一个数字', icon: 'warning', confirmButtonText: '确定' });
+                return;
+            }
+
+            const base64 = canvas.toDataURL('image/png');
+            recognizeBtn.disabled = true;
+            recognizeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>识别中...';
+
+            let recognized = null;
+            let correct = false;
+            try {
+                const resp = await fetch('/api/recognize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64 })
+                });
+                if (resp.status === 401) {
+                    window.location.href = '/auth/login';
+                    return;
+                }
+                if (!resp.ok) throw new Error('识别失败');
+                const data = await resp.json();
+                const results = data.result || [];
+                if (results.length > 0) {
+                    recognized = results[0][0];
+                }
+                if (recognized !== null) {
+                    correct = await judgeAnswer(recognized, gameState.answers[gameState.idx]);
+                    if (correct) gameState.score++;
+                }
+                $('scoreVal').textContent = String(gameState.score);
+                showFeedback(correct, recognized);
+            } catch (err) {
+                Swal.fire({ title: '错误', text: err.message || '提交失败', icon: 'error', confirmButtonText: '确定' });
+            } finally {
+                recognizeBtn.disabled = false;
+            }
+
+            // 1.2 秒后进入下一题或结束
+            setTimeout(() => {
+                gameState.idx++;
+                if (gameState.idx >= gameState.questions.length) {
+                    endGame();
+                } else {
+                    showQuestion();
+                }
+            }, 1200);
+        });
+    </script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import os
 import io
 import uuid
 import base64
+import random
 
 SAVE_PATH = 'data/images'
 os.makedirs(SAVE_PATH, exist_ok=True)
@@ -20,3 +21,42 @@ def load_and_save_image_from_base64(base64_str: str) -> tuple[Image.Image, str]:
 
 def get_image_path(filename: str) -> str:
     return os.path.join(SAVE_PATH, filename)
+
+
+def generate_question() -> tuple[str, int]:
+    """
+    生成四则运算算数问题，并且保证答案为 0-9 整数
+    返回一个字符串形式的算数问题和一个整数形式的答案
+    """
+    operator = random.choice(['+', '-', '*', '/'])
+    final_answer = random.randint(0, 9)
+    if operator == '+':
+        a = random.randint(-100, final_answer)
+        b = final_answer - a
+        question = f"{a} + {b}"
+    elif operator == '-':
+        a = random.randint(final_answer, 100)
+        b = a - final_answer
+        question = f"{a} - {b}"
+    elif operator == '*':
+        if final_answer == 0:
+            a = random.randint(-100, 100)
+            b = 0
+        else:
+            factors = [i for i in range(1, final_answer + 1) if final_answer % i == 0]
+            a = random.choice(factors)
+            b = final_answer // a
+        if random.choice([True, False]):
+            a, b = b, a
+        if random.choice([True, False]):
+            a = -a
+            b = -b
+        question = f"{a} * {b}"
+    else:  # operator == '/'
+        b = random.randint(1, 9)
+        a = final_answer * b
+        if random.choice([True, False]):
+            a = -a
+            b = -b
+        question = f"{a} ÷ {b}"
+    return question, final_answer
