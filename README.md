@@ -33,6 +33,37 @@ uv run python main.py
 
 浏览器打开 http://localhost:5000
 
+## 使用 Docker 直接部署
+### 1. 创建 `docker-compose.yml` 文件并且填写类似内容
+```yaml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/rotten-lkz/study-ai-number-recognition:latest
+    container_name: python-mnist-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+```
+### 2. 运行 `docker compose up -d`，如果没有已有的模型文件会自动训练，之后便会自动启动应用
+
+### 说明
+
+该 Docker 镜像由 GitHub Actions 自动构建，触发条件是带 v* tag 的 commit。
+
 ---
 
 ## API 概览
