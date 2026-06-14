@@ -42,6 +42,8 @@ uv run python main.py
 | POST | /api/register | 用户注册 | 否 |
 | POST | /api/login | 用户登录（返回 JWT Cookie） | 否 |
 | POST | /api/logout | 用户登出 | 否 |
+| POST | /api/login_on_phone | 生成临时 JWT | 是 |
+| GET | /api/login_by_temporary_token | 用临时 JWT 登录 | 否 |
 | GET | /api/me | 获取当前用户信息 | 是 |
 | POST | /api/recognize | 上传 Base64 图片进行识别 | 是 |
 | GET | /api/recognition_history | 获取识别历史记录 | 是 |
@@ -75,6 +77,6 @@ CNN(
 ## 版权声明
 
 /frontend/resource 下使用了几个外部项目：
-[Bootstrap](https://github.com/twbs/bootstrap)
-[qrcode.js](https://github.com/davidshimjs/qrcodejs)
-[sweetalert2](https://github.com/sweetalert2/sweetalert2)
+- [Bootstrap](https://github.com/twbs/bootstrap) under MIT
+- [qrcode.js](https://github.com/davidshimjs/qrcodejs) under MIT
+- [sweetalert2](https://github.com/sweetalert2/sweetalert2) under MIT

@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      image: ${{ steps.image_name.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - id: image_name
+        shell: bash
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+  # 并发构建多架构的 Docker 镜像（AMD64 和 ARM64）
+  build-docker:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - os: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.create-release.outputs.image }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=v${{ needs.create-release.outputs.version }}
+            type=raw,value=${{ needs.create-release.outputs.version }}
+
+      # 利用 Docker 缓存直接在云端多阶段构建并推送（不需要在 Action 层面装 python/uv）
+      - name: Build and push Docker image by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          # 核心技巧：使用 cache-from/to 提速后续的构建
+          cache-from: type=gha,scope=build-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=build-${{ matrix.arch }}
+          outputs: type=image,name=${{ needs.create-release.outputs.image }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export image digest
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # 将不同架构的镜像 Digest 合并为一个多架构 Manifest 清单
+  merge-docker:
+    needs:
+      - create-release
+      - build-docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v5
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.create-release.outputs.image }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=v${{ needs.create-release.outputs.version }}
+            type=raw,value=${{ needs.create-release.outputs.version }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        shell: bash
+        run: |
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            tag_args+=(--tag "$tag")
+          done <<'EOF'
+          ${{ steps.meta.outputs.tags }}
+          EOF
+
+          digest_refs=()
+          for digest in *; do
+            digest_refs+=("${{ needs.create-release.outputs.image }}@sha256:$digest")
+          done
+
+          docker buildx imagetools create "${tag_args[@]}" "${digest_refs[@]}"
+
+      - name: Inspect image
+        shell: bash
+        run: docker buildx imagetools inspect ${{ needs.create-release.outputs.image }}:v${{ needs.create-release.outputs.version }}
